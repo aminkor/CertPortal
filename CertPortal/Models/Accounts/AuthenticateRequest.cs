@@ -1,10 +1,11 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 
-namespace CertPortal.Contracts
+namespace CertPortal.Models.Accounts
 {
     public class AuthenticateRequest
     {
         [Required]
+        [EmailAddress]
         public string Email { get; set; }
 
         [Required]

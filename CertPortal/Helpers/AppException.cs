@@ -1,8 +1,10 @@
-﻿using System;
+using System;
 using System.Globalization;
 
 namespace CertPortal.Helpers
 {
+    // custom exception class for throwing application specific exceptions 
+    // that can be caught and handled within the application
     public class AppException : Exception
     {
         public AppException() : base() {}
