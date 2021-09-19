@@ -217,6 +217,8 @@ namespace CertPortal.Services
 
         public AccountResponse Create(CreateRequest model)
         {
+            bool yeke = _context.Accounts.Any(x => x.Email == model.Email);
+            Console.WriteLine(yeke);
             // validate
             if (_context.Accounts.Any(x => x.Email == model.Email))
                 throw new AppException($"Email '{model.Email}' is already registered");
@@ -300,7 +302,7 @@ namespace CertPortal.Services
             var tokenDescriptor = new SecurityTokenDescriptor
             {
                 Subject = new ClaimsIdentity(new[] { new Claim("id", account.Id.ToString()) }),
-                Expires = DateTime.UtcNow.AddMinutes(15),
+                Expires = DateTime.UtcNow.AddDays(7),
                 SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
             };
             var token = tokenHandler.CreateToken(tokenDescriptor);
@@ -312,7 +314,7 @@ namespace CertPortal.Services
             return new RefreshToken
             {
                 Token = randomTokenString(),
-                Expires = DateTime.UtcNow.AddDays(7),
+                Expires = DateTime.UtcNow.AddDays(30),
                 Created = DateTime.UtcNow,
                 CreatedByIp = ipAddress
             };

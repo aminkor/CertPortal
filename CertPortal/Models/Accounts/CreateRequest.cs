@@ -16,7 +16,7 @@ namespace CertPortal.Models.Accounts
 
         [Required]
         [EnumDataType(typeof(UserRole))]
-        public string Role { get; set; }
+        public string UserRole { get; set; }
 
         [Required]
         [EmailAddress]

@@ -48,7 +48,7 @@ namespace CertPortal
             
             var serviceProvider = services.BuildServiceProvider();
             var service = serviceProvider.GetService<IAccountService>();
-            service.TestDB();
+            // service.TestDB();
         }
 
         // configure the HTTP request pipeline
