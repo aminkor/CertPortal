@@ -52,7 +52,7 @@ namespace CertPortal.Controllers
                 return BadRequest(new { message = "Token is required" });
 
             // users can revoke their own tokens and admins can revoke any tokens
-            if (!Account.OwnsToken(token) && Account.Role != Role.Admin)
+            if (!Account.OwnsToken(token) && Account.UserRole != UserRole.Admin)
                 return Unauthorized(new { message = "Unauthorized" });
 
             _accountService.RevokeToken(token, ipAddress());
@@ -94,7 +94,7 @@ namespace CertPortal.Controllers
             return Ok(new { message = "Password reset successful, you can now login" });
         }
 
-        [Authorize(Role.Admin)]
+        [Authorize(UserRole.Admin)]
         [HttpGet]
         public ActionResult<IEnumerable<AccountResponse>> GetAll()
         {
@@ -107,14 +107,14 @@ namespace CertPortal.Controllers
         public ActionResult<AccountResponse> GetById(int id)
         {
             // users can get their own account and admins can get any account
-            if (id != Account.Id && Account.Role != Role.Admin)
+            if (id != Account.Id && Account.UserRole != UserRole.Admin)
                 return Unauthorized(new { message = "Unauthorized" });
 
             var account = _accountService.GetById(id);
             return Ok(account);
         }
 
-        [Authorize(Role.Admin)]
+        [Authorize(UserRole.Admin)]
         [HttpPost]
         public ActionResult<AccountResponse> Create(CreateRequest model)
         {
@@ -127,11 +127,11 @@ namespace CertPortal.Controllers
         public ActionResult<AccountResponse> Update(int id, UpdateRequest model)
         {
             // users can update their own account and admins can update any account
-            if (id != Account.Id && Account.Role != Role.Admin)
+            if (id != Account.Id && Account.UserRole != UserRole.Admin)
                 return Unauthorized(new { message = "Unauthorized" });
 
             // only admins can update role
-            if (Account.Role != Role.Admin)
+            if (Account.UserRole != UserRole.Admin)
                 model.Role = null;
 
             var account = _accountService.Update(id, model);
@@ -143,7 +143,7 @@ namespace CertPortal.Controllers
         public IActionResult Delete(int id)
         {
             // users can delete their own account and admins can delete any account
-            if (id != Account.Id && Account.Role != Role.Admin)
+            if (id != Account.Id && Account.UserRole != UserRole.Admin)
                 return Unauthorized(new { message = "Unauthorized" });
 
             _accountService.Delete(id);

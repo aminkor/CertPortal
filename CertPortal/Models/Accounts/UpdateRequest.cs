@@ -14,7 +14,7 @@ namespace CertPortal.Models.Accounts
         public string FirstName { get; set; }
         public string LastName { get; set; }
 
-        [EnumDataType(typeof(Role))]
+        [EnumDataType(typeof(UserRole))]
         public string Role
         {
             get => _role;

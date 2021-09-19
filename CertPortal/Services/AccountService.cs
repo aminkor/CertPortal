@@ -30,6 +30,8 @@ namespace CertPortal.Services
         AccountResponse Create(CreateRequest model);
         AccountResponse Update(int id, UpdateRequest model);
         void Delete(int id);
+
+        void TestDB();
     }
 
     public class AccountService : IAccountService
@@ -38,7 +40,6 @@ namespace CertPortal.Services
         private readonly IMapper _mapper;
         private readonly AppSettings _appSettings;
         private readonly IEmailService _emailService;
-
         public AccountService(
             DataContext context,
             IMapper mapper,
@@ -127,7 +128,7 @@ namespace CertPortal.Services
 
             // first registered account is an admin
             var isFirstAccount = _context.Accounts.Count() == 0;
-            account.Role = isFirstAccount ? Role.Admin : Role.User;
+            account.UserRole = isFirstAccount ? UserRole.Admin : UserRole.User;
             account.Created = DateTime.UtcNow;
             account.VerificationToken = randomTokenString();
 
@@ -261,6 +262,17 @@ namespace CertPortal.Services
             var account = getAccount(id);
             _context.Accounts.Remove(account);
             _context.SaveChanges();
+        }
+
+        public void TestDB()
+        {
+            var certificates = _context.Certificates.ToList();
+            var institutions = _context.Institutions.ToList();
+            var roles = _context.Roles.ToList();
+            var accountCertificates = _context.AccountCertificates.ToList();
+            var accountRoles = _context.AccountRoles.ToList();
+
+            Console.WriteLine("heelloo");
         }
 
         // helper methods
