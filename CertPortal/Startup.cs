@@ -45,7 +45,8 @@ namespace CertPortal
             // configure DI for application services
             services.AddScoped<IAccountService, AccountService>();
             services.AddScoped<IEmailService, EmailService>();
-            
+            services.AddScoped<IInstitutionService, InstitutionService>();
+
             var serviceProvider = services.BuildServiceProvider();
             var service = serviceProvider.GetService<IAccountService>();
             // service.TestDB();

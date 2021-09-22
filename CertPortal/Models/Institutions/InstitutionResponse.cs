@@ -1,8 +1,8 @@
 ﻿using System;
 
-namespace CertPortal.Entities
+namespace CertPortal.Models.Institutions
 {
-    public class Institution
+    public class InstitutionResponse
     {
         public int Id { get; set; }
         public string Name { get; set; }
@@ -10,6 +10,5 @@ namespace CertPortal.Entities
         public string Address { get; set; }
         public DateTime Created { get; set; }
         public DateTime? Updated { get; set; }
-
     }
 }

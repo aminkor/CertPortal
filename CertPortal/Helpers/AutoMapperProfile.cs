@@ -1,6 +1,11 @@
 using AutoMapper;
 using CertPortal.Entities;
 using CertPortal.Models.Accounts;
+using CertPortal.Models.Institutions;
+using CreateRequest = CertPortal.Models.Accounts.CreateRequest;
+using UpdateRequest = CertPortal.Models.Accounts.UpdateRequest;
+using InstitutionCreateRequest = CertPortal.Models.Institutions.CreateRequest;
+using InstitutionUpdateRequest = CertPortal.Models.Institutions.UpdateRequest;
 
 namespace CertPortal.Helpers
 {
@@ -26,8 +31,25 @@ namespace CertPortal.Helpers
                         if (prop.GetType() == typeof(string) && string.IsNullOrEmpty((string)prop)) return false;
 
                         // ignore null role
-                        if (x.DestinationMember.Name == "Role" && src.Role == null) return false;
+                        if (x.DestinationMember.Name == "UserRole" && src.Role == null) return false;
 
+                        return true;
+                    }
+                ));
+            
+            CreateMap<Institution, InstitutionResponse>();
+
+            CreateMap<InstitutionCreateRequest, Institution>();
+
+            CreateMap<InstitutionUpdateRequest, Institution>()
+                .ForAllMembers(x => x.Condition(
+                    (src, dest, prop) =>
+                    {
+                        // ignore null & empty string properties
+                        if (prop == null) return false;
+                        if (prop.GetType() == typeof(string) && string.IsNullOrEmpty((string)prop)) return false;
+
+                     
                         return true;
                     }
                 ));
