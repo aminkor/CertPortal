@@ -1,11 +1,14 @@
 using AutoMapper;
 using CertPortal.Entities;
 using CertPortal.Models.Accounts;
+using CertPortal.Models.Certificates;
 using CertPortal.Models.Institutions;
 using CreateRequest = CertPortal.Models.Accounts.CreateRequest;
 using UpdateRequest = CertPortal.Models.Accounts.UpdateRequest;
 using InstitutionCreateRequest = CertPortal.Models.Institutions.CreateRequest;
 using InstitutionUpdateRequest = CertPortal.Models.Institutions.UpdateRequest;
+using CertificateCreateRequest = CertPortal.Models.Certificates.CreateRequest;
+using CertificateUpdateRequest = CertPortal.Models.Certificates.UpdateRequest;
 
 namespace CertPortal.Helpers
 {
@@ -42,6 +45,23 @@ namespace CertPortal.Helpers
             CreateMap<InstitutionCreateRequest, Institution>();
 
             CreateMap<InstitutionUpdateRequest, Institution>()
+                .ForAllMembers(x => x.Condition(
+                    (src, dest, prop) =>
+                    {
+                        // ignore null & empty string properties
+                        if (prop == null) return false;
+                        if (prop.GetType() == typeof(string) && string.IsNullOrEmpty((string)prop)) return false;
+
+                     
+                        return true;
+                    }
+                ));
+            
+            CreateMap<Certificate, CertificateResponse>();
+
+            CreateMap<CertificateCreateRequest, Certificate>();
+
+            CreateMap<CertificateUpdateRequest, Certificate>()
                 .ForAllMembers(x => x.Condition(
                     (src, dest, prop) =>
                     {

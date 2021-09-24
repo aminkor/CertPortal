@@ -46,6 +46,7 @@ namespace CertPortal
             services.AddScoped<IAccountService, AccountService>();
             services.AddScoped<IEmailService, EmailService>();
             services.AddScoped<IInstitutionService, InstitutionService>();
+            services.AddScoped<ICertificateService, CertificateService>();
 
             var serviceProvider = services.BuildServiceProvider();
             var service = serviceProvider.GetService<IAccountService>();
