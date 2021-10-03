@@ -12,6 +12,10 @@ using System.Text;
 using CertPortal.Entities;
 using CertPortal.Helpers;
 using CertPortal.Models.Accounts;
+using CertPortal.Models.Institutions;
+using Microsoft.EntityFrameworkCore;
+using CreateRequest = CertPortal.Models.Accounts.CreateRequest;
+using UpdateRequest = CertPortal.Models.Accounts.UpdateRequest;
 
 namespace CertPortal.Services
 {
@@ -32,6 +36,8 @@ namespace CertPortal.Services
         void Delete(int id);
 
         void TestDB();
+        IEnumerable<StudentResponse> GetStudents(int institutionId);
+
     }
 
     public class AccountService : IAccountService
@@ -275,6 +281,37 @@ namespace CertPortal.Services
             var accountRoles = _context.AccountRoles.ToList();
 
             Console.WriteLine("heelloo");
+        }
+
+        public IEnumerable<StudentResponse> GetStudents(int institutionId)
+        {
+            var students = _context.Accounts
+                    .Where(student => student.UserRole == UserRole.User 
+                                      && (
+                                          student.InstitutionStudent.FirstOrDefault() != null && student.InstitutionStudent.First().Institution.Id == institutionId
+                                          || student.InstitutionStudent.Count == 0
+                                          )
+                                      
+                                      )
+                    .Include(student => student.InstitutionStudent)
+                    .ThenInclude(sis => sis.Institution)
+                    ;
+
+            IEnumerable<StudentResponse> studentResponses = new List<StudentResponse>();
+            foreach (var student in students)
+            {
+                StudentResponse studentResponse = new StudentResponse();
+                studentResponse.Id = student.Id;
+                studentResponse.FirstName = student.FirstName;
+                studentResponse.LastName = student.LastName;
+                studentResponse.Created = student.Created;
+                studentResponse.Updated = student.Updated;
+                studentResponse.Status = student.InstitutionStudent.FirstOrDefault() != null ? student.InstitutionStudent.FirstOrDefault().Institution.Id == institutionId ? "Added" : "Available" : "Available";
+                studentResponses = studentResponses.Append(studentResponse);
+             
+            }
+
+            return studentResponses;
         }
 
         // helper methods

@@ -1,9 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using AutoMapper;
 using CertPortal.Entities;
 using CertPortal.Helpers;
 using CertPortal.Models.Institutions;
+using Microsoft.EntityFrameworkCore;
 
 namespace CertPortal.Services
 {
@@ -14,8 +16,9 @@ namespace CertPortal.Services
         InstitutionResponse Create(CreateRequest model);
         InstitutionResponse Update(int id, UpdateRequest model);
         void Delete(int id);
-
-
+        IEnumerable<StudentResponse> GetStudents(int institutionId);
+        StudentResponse AddStudent(AddStudentRequest model);
+        void RemoveStudent(AddStudentRequest model);
     }
     public class InstitutionService : IInstitutionService
     {
@@ -30,8 +33,24 @@ namespace CertPortal.Services
 
         public IEnumerable<InstitutionResponse> GetAll()
         {
-            var institutions = _context.Institutions;
-            return _mapper.Map<IList<InstitutionResponse>>(institutions);
+            IEnumerable<InstitutionResponse> institutionResponses = new List<InstitutionResponse>();
+            var institutions = _context.Institutions
+                .Include(institution => institution.InstitutionStudent );
+            foreach (var institution in institutions)
+            {
+                int studentsCount = institution.InstitutionStudent != null ? institution.InstitutionStudent.Count : 0;
+                InstitutionResponse institutionResponse = new InstitutionResponse()
+                {
+                    Id = institution.Id,
+                    Address = institution.Address,
+                    Created = institution.Created,
+                    Updated = institution.Updated,
+                    Description = institution.Description,
+                    StudentsCounts = studentsCount.ToString()
+                };
+                institutionResponses = institutionResponses.Append(institutionResponse);
+            }
+            return institutionResponses;
         }
         
         public InstitutionResponse GetById(int id)
@@ -85,7 +104,74 @@ namespace CertPortal.Services
             _context.SaveChanges();
         }
 
+        public IEnumerable<StudentResponse> GetStudents(int institutionId)
+        {
+            var students = _context.InstitutionStudents
+                .Where(student => student.InstitutionId == institutionId )
+                .Include( student => student.Account);
+            
+            IEnumerable<StudentResponse> studentResponses = new List<StudentResponse>();
+            foreach (var student in students)
+            {
+                
+                StudentResponse studentResponse = new StudentResponse();
+                studentResponse.Id = student.Account.Id;
+                studentResponse.FirstName = student.Account.FirstName;
+                studentResponse.LastName = student.Account.LastName;
+                studentResponse.Created = student.Created;
+                studentResponse.Updated = student.Updated;
+
+                studentResponses = studentResponses.Append(studentResponse);
+
+            }
+
+            return studentResponses;
+        }
+
+        public StudentResponse AddStudent(AddStudentRequest request)
+        {
+            StudentResponse studentResponse = new StudentResponse();
+
+            Account student = _context.Accounts.Find(request.StudentId);
+            Institution institution = _context.Institutions.Find(request.InstitutionId);
+
+            if (student != null && institution != null)
+            {
+                InstitutionStudent institutionStudent = new InstitutionStudent();
+                institutionStudent.AccountId = student.Id;
+                institutionStudent.InstitutionId = institution.Id;
+                institutionStudent.Created = DateTime.Now;
+
+                _context.InstitutionStudents.Add(institutionStudent);
+                _context.SaveChanges();
+            }
+            else
+            {
+                throw new KeyNotFoundException("Institution or Account not found");
+            }
+            return studentResponse;
+        }
         
+        public void RemoveStudent(AddStudentRequest request)
+        {
+            InstitutionStudent institutionStudent = _context.InstitutionStudents.FirstOrDefault(student => 
+                student.AccountId == request.StudentId 
+                && student.InstitutionId == request.InstitutionId);
+
+            if (institutionStudent != null)
+            {
+                _context.InstitutionStudents.Remove(institutionStudent);
+                _context.SaveChanges();
+
+            }
+            else
+            {
+                throw new KeyNotFoundException("Institution or Account not found");
+
+            }
+        }
+
+
         private Institution getInstitution(int id)
         {
             var institution = _context.Institutions.Find(id);

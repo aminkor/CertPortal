@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 
 namespace CertPortal.Entities
 {
@@ -10,6 +11,6 @@ namespace CertPortal.Entities
         public string Address { get; set; }
         public DateTime Created { get; set; }
         public DateTime? Updated { get; set; }
-
+        public virtual ICollection<InstitutionStudent> InstitutionStudent { get; set; }
     }
 }

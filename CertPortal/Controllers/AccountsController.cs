@@ -149,6 +149,20 @@ namespace CertPortal.Controllers
             _accountService.Delete(id);
             return Ok(new { message = "Account deleted successfully" });
         }
+        
+        [Authorize]
+        [HttpGet("Students/{instutitionId:int}")]
+        public IActionResult GetStudents(int instutitionId)
+        {
+            // users can delete their own account and admins can delete any account
+            // TODO return unauthorized if non admin trying to get students list, or the user no institution role on that
+            // resource
+            // if (id != Account.Id && Account.UserRole != UserRole.Admin)
+            //     return Unauthorized(new { message = "Unauthorized" });
+
+            var students = _accountService.GetStudents(instutitionId);
+            return Ok(students);
+        }
 
         // helper methods
 
