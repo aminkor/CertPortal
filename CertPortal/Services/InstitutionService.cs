@@ -42,6 +42,7 @@ namespace CertPortal.Services
                 InstitutionResponse institutionResponse = new InstitutionResponse()
                 {
                     Id = institution.Id,
+                    Name = institution.Name,
                     Address = institution.Address,
                     Created = institution.Created,
                     Updated = institution.Updated,

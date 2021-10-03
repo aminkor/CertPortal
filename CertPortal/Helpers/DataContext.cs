@@ -13,6 +13,7 @@ namespace CertPortal.Helpers
         public DbSet<AccountCertificate> AccountCertificates { get; set; }
         public DbSet<AccountRole> AccountRoles { get; set; }
         public DbSet<InstitutionStudent> InstitutionStudents { get; set; }
+        public DbSet<RoleInstitution> RoleInstitutions { get; set; }
 
         private readonly IConfiguration Configuration;
 

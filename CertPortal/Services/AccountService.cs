@@ -37,6 +37,8 @@ namespace CertPortal.Services
 
         void TestDB();
         IEnumerable<StudentResponse> GetStudents(int institutionId);
+        IEnumerable<UserRoleResponse> GetUserRoles(int userId);
+        void UpdateRoleInstitutions(RoleInstitutionUpdateRequest request);
 
     }
 
@@ -314,8 +316,72 @@ namespace CertPortal.Services
             return studentResponses;
         }
 
+        public IEnumerable<UserRoleResponse> GetUserRoles(int userId)
+        {
+            var account = this.getAccount(userId);
+            
+            IEnumerable<UserRoleResponse> userRoleResponses = new List<UserRoleResponse>();
+            
+            var userRoleResponse = new UserRoleResponse();
+            userRoleResponse.AccountId = account.Id;
+            userRoleResponse.RoleName = "Instructor";
+            
+            var instructorRoles = _context.RoleInstitutions
+                .Where(accountRole =>
+                accountRole.AccountId == account.Id)
+                .Include(accountRole => accountRole.Institution);
+
+            foreach (var instructorRole in instructorRoles)
+            {
+                InstitutionResponse institutionResponse = this.CreateInstitutionResponse(instructorRole.Institution);
+                userRoleResponse.Institutions.Add(institutionResponse);
+            }
+
+            userRoleResponses = userRoleResponses.Append(userRoleResponse);
+
+            return userRoleResponses;
+        }
+
+        public void UpdateRoleInstitutions(RoleInstitutionUpdateRequest request)
+        {
+            Account userAccount = getAccount(request.AccountId);
+            
+            // clear all current associations
+            var currentInstitutions =
+                _context.RoleInstitutions.Where(institution => institution.AccountId == userAccount.Id);
+
+            _context.RoleInstitutions.RemoveRange(currentInstitutions);
+            _context.SaveChanges();
+
+            foreach (var institutionId in request.InstitutionIds)
+            {
+                RoleInstitution roleInstitution = new RoleInstitution();
+                roleInstitution.AccountId = userAccount.Id;
+                roleInstitution.InstitutionId = institutionId;
+                roleInstitution.Created = DateTime.Now;
+                _context.RoleInstitutions.Add(roleInstitution);
+            }
+
+            _context.SaveChanges();
+            
+        }
+
         // helper methods
 
+        private InstitutionResponse CreateInstitutionResponse(Institution institution)
+        {
+            InstitutionResponse institutionResponse = new InstitutionResponse()
+            {
+                Id = institution.Id,
+                Name = institution.Name,
+                Address = institution.Address,
+                Created = institution.Created,
+                Updated = institution.Updated,
+                Description = institution.Description,
+            };
+
+            return institutionResponse;
+        }
         private Account getAccount(int id)
         {
             var account = _context.Accounts.Find(id);

@@ -34,7 +34,7 @@ namespace CertPortal.Helpers
                         if (prop.GetType() == typeof(string) && string.IsNullOrEmpty((string)prop)) return false;
 
                         // ignore null role
-                        if (x.DestinationMember.Name == "UserRole" && src.Role == null) return false;
+                        if (x.DestinationMember.Name == "UserRole" && src.UserRole == null) return false;
 
                         return true;
                     }

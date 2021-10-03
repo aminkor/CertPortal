@@ -132,7 +132,7 @@ namespace CertPortal.Controllers
 
             // only admins can update role
             if (Account.UserRole != UserRole.Admin)
-                model.Role = null;
+                model.UserRole = null;
 
             var account = _accountService.Update(id, model);
             return Ok(account);
@@ -162,6 +162,34 @@ namespace CertPortal.Controllers
 
             var students = _accountService.GetStudents(instutitionId);
             return Ok(students);
+        }
+        
+        [Authorize]
+        [HttpGet("Roles/{accountId:int}")]
+        public IActionResult GetUserRoles(int accountId)
+        {
+            // users can delete their own account and admins can delete any account
+            // TODO return unauthorized if non admin trying to get students list, or the user no institution role on that
+            // resource
+            // if (id != Account.Id && Account.UserRole != UserRole.Admin)
+            //     return Unauthorized(new { message = "Unauthorized" });
+
+            var userRoles = _accountService.GetUserRoles(accountId);
+            return Ok(userRoles);
+        }
+        
+        [Authorize]
+        [HttpPut("Roles/Institutions")]
+        public IActionResult UpdateRoleInstitutions(RoleInstitutionUpdateRequest request)
+        {
+            // users can delete their own account and admins can delete any account
+            // TODO return unauthorized if non admin trying to get students list, or the user no institution role on that
+            // resource
+            // if (id != Account.Id && Account.UserRole != UserRole.Admin)
+            //     return Unauthorized(new { message = "Unauthorized" });
+
+            _accountService.UpdateRoleInstitutions(request);
+            return Ok(new { message = "Institution Updated Succesfully" });
         }
 
         // helper methods

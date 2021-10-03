@@ -15,7 +15,7 @@ namespace CertPortal.Models.Accounts
         public string LastName { get; set; }
 
         [EnumDataType(typeof(UserRole))]
-        public string Role
+        public string UserRole
         {
             get => _role;
             set => _role = replaceEmptyWithNull(value);
