@@ -19,6 +19,7 @@ namespace CertPortal.Services
         IEnumerable<StudentResponse> GetStudents(int institutionId);
         StudentResponse AddStudent(AddStudentRequest model);
         void RemoveStudent(AddStudentRequest model);
+        IEnumerable<InstitutionResponse> GetInstructorInstitutions(int userId);
     }
     public class InstitutionService : IInstitutionService
     {
@@ -170,6 +171,33 @@ namespace CertPortal.Services
                 throw new KeyNotFoundException("Institution or Account not found");
 
             }
+        }
+
+        public IEnumerable<InstitutionResponse> GetInstructorInstitutions(int userId)
+        {
+            IEnumerable<InstitutionResponse> institutionResponses = new List<InstitutionResponse>();
+            var account = _context.Accounts.Find(userId);
+            
+            var accountInstitutions = _context.RoleInstitutions.Where(institution => institution.AccountId == userId )
+                .Include(institution => institution.Institution )
+                .ThenInclude( inst => inst.InstitutionStudent);
+            
+            foreach (var accountInstitution in accountInstitutions)
+            {
+                int studentsCount = accountInstitution.Institution.InstitutionStudent != null ? accountInstitution.Institution.InstitutionStudent.Count : 0;
+                InstitutionResponse institutionResponse = new InstitutionResponse()
+                {
+                    Id = accountInstitution.Institution.Id,
+                    Name = accountInstitution.Institution.Name,
+                    Address = accountInstitution.Institution.Address,
+                    Created = accountInstitution.Institution.Created,
+                    Updated = accountInstitution.Institution.Updated,
+                    Description = accountInstitution.Institution.Description,
+                    StudentsCounts = studentsCount.ToString()
+                };
+                institutionResponses = institutionResponses.Append(institutionResponse);
+            }
+            return institutionResponses;
         }
 
 

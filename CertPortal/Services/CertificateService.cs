@@ -1,10 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using AutoMapper;
 using CertPortal.Entities;
 using CertPortal.Helpers;
 using CertPortal.Models.Certificates;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
 
 namespace CertPortal.Services
@@ -16,6 +18,7 @@ namespace CertPortal.Services
         CertificateResponse Create(CreateRequest model);
         CertificateResponse Update(int id, UpdateRequest model);
         void Delete(int id);
+        IEnumerable<CertificateResponse> GetUserCertificates(int userId);
 
 
     }
@@ -89,7 +92,19 @@ namespace CertPortal.Services
             _context.Certificates.Remove(certificate);
             _context.SaveChanges();
         }
-        
+
+        public IEnumerable<CertificateResponse> GetUserCertificates(int userId)
+        {
+            var account = _context.Accounts.Find(userId);
+            var accountCertificates = _context.AccountCertificates.Include(certificate => certificate.Certificate );
+            IEnumerable<Certificate> certificates = new List<Certificate>();
+            foreach (var accountCertificate in accountCertificates)
+            {
+                certificates = certificates.Append(accountCertificate.Certificate);
+            }
+            return _mapper.Map<IList<CertificateResponse>>(certificates);
+        }
+
         private Certificate getCertificate(int id)
         {
             var certificate = _context.Certificates.Find(id);

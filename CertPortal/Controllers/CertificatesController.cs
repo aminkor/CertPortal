@@ -115,6 +115,14 @@ namespace CertPortal.Controllers
             return Ok(new { message = "Certificate deleted successfully" });
         }
         
+        [Authorize]
+        [HttpGet("users/{userId:int}")]
+        public ActionResult<IEnumerable<CertificateResponse>> GetUserCertificates(int userId)
+        {
+            var certificates = _certificateService.GetUserCertificates(userId);
+            return Ok(certificates);
+        }
+        
         private string GetUniqueFileName(string fileName)
         {
             fileName = Path.GetFileName(fileName);

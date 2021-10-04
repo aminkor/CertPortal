@@ -109,5 +109,13 @@ namespace CertPortal.Controllers
             _institutionService.RemoveStudent(model);
             return Ok(new { message = "Institution deleted successfully" });
         }
+        
+        [Authorize]
+        [HttpGet("Instructors/{userId:int}")]
+        public ActionResult<IEnumerable<InstitutionResponse>> GetInstructorInstitutions(int userId)
+        {
+            var institutions = _institutionService.GetInstructorInstitutions(userId);
+            return Ok(institutions);
+        }
     }
 }
