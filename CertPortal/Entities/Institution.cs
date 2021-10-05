@@ -12,5 +12,9 @@ namespace CertPortal.Entities
         public DateTime Created { get; set; }
         public DateTime? Updated { get; set; }
         public virtual ICollection<InstitutionStudent> InstitutionStudent { get; set; }
+        
+        public virtual ICollection<Certificate> Certificates { get; set; }
+        public virtual ICollection<Account> Students { get; set; }
+
     }
 }

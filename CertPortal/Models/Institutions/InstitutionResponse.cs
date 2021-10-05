@@ -11,5 +11,7 @@ namespace CertPortal.Models.Institutions
         public DateTime Created { get; set; }
         public DateTime? Updated { get; set; }
         public string StudentsCounts { get; set; }
+        public string CertificatesCounts { get; set; }
+
     }
 }

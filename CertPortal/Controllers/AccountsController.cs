@@ -152,7 +152,7 @@ namespace CertPortal.Controllers
         
         [Authorize]
         [HttpGet("Students/{instutitionId:int}")]
-        public IActionResult GetStudents(int instutitionId)
+        public IActionResult GetStudents(int instutitionId, [FromQuery] int forCert = 0)
         {
             // users can delete their own account and admins can delete any account
             // TODO return unauthorized if non admin trying to get students list, or the user no institution role on that
@@ -160,7 +160,7 @@ namespace CertPortal.Controllers
             // if (id != Account.Id && Account.UserRole != UserRole.Admin)
             //     return Unauthorized(new { message = "Unauthorized" });
 
-            var students = _accountService.GetStudents(instutitionId);
+            var students = _accountService.GetStudents(instutitionId, forCert);
             return Ok(students);
         }
         

@@ -22,13 +22,23 @@ namespace CertPortal.Entities
         public DateTime Created { get; set; }
         public DateTime? Updated { get; set; }
         public List<RefreshToken> RefreshTokens { get; set; }
+        public int? InstitutionId { get; set; }
+
+        public virtual Institution Institution { get; set; }
+
         
         public virtual ICollection<InstitutionStudent> InstitutionStudent { get; set; }
+        public virtual ICollection<Certificate> Certificates { get; set; }
 
 
         public bool OwnsToken(string token) 
         {
             return this.RefreshTokens?.Find(x => x.Token == token) != null;
+        }
+
+        public string FullName()
+        {
+            return this.FirstName + " " + this.LastName;
         }
     }
 }

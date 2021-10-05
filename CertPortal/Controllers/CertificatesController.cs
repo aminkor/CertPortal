@@ -5,11 +5,13 @@ using System.Linq;
 using System.Threading.Tasks;
 using AutoMapper;
 using CertPortal.Entities;
+using CertPortal.Helpers;
 using CertPortal.Models.Certificates;
 using CertPortal.Models.Institutions;
 using CertPortal.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
 using CreateRequest = CertPortal.Models.Certificates.CreateRequest;
 using UpdateRequest = CertPortal.Models.Certificates.UpdateRequest;
 
@@ -23,13 +25,16 @@ namespace CertPortal.Controllers
         private readonly ICertificateService _certificateService;
         private readonly IMapper _mapper;
         private readonly IHostEnvironment _env;
-        private static readonly string _serverUrl = "http://localhost/certportal_uploads/";
+        private static readonly string _serverUrl = "http://cportal.ddns.net:4444/certportal_uploads/";
         private static readonly string _serverDir = "D:\\wamp64\\www\\certportal_uploads";
-        public CertificatesController(ICertificateService certificateService, IMapper mapper, IHostEnvironment env)
+        private readonly AppSettings _appSettings;
+
+        public CertificatesController(ICertificateService certificateService, IMapper mapper, IHostEnvironment env, IOptions<AppSettings> appSettings)
         {
             _certificateService = certificateService;
             _mapper = mapper;
             _env = env;
+            _appSettings = appSettings.Value;
         }
         
         [Authorize(UserRole.Admin)]
@@ -61,7 +66,7 @@ namespace CertPortal.Controllers
             {
                 var doc = Request.Form.Files.First();
                 var uniqueFileName = GetUniqueFileName(doc.FileName);
-                var filePath = Path.Combine(_serverDir, uniqueFileName);
+                var filePath = Path.Combine(_appSettings.UploadServerDir, uniqueFileName);
                 using (var stream = new FileStream(filePath, FileMode.Create))
                 {
                     await doc.CopyToAsync(stream);
@@ -69,7 +74,7 @@ namespace CertPortal.Controllers
                 // await doc.CopyToAsync(new FileStream(filePath, FileMode.Create));
                 
                 model.FileName = uniqueFileName;
-                model.Url = _serverUrl + uniqueFileName;
+                model.Url = _appSettings.UploadServerUrl + uniqueFileName;
             }
           
             var certificate = _certificateService.Create(model);
@@ -89,13 +94,13 @@ namespace CertPortal.Controllers
             {
                 var doc = Request.Form.Files.First();
                 var uniqueFileName = GetUniqueFileName(doc.FileName);
-                var filePath = Path.Combine(_serverDir, uniqueFileName);
+                var filePath = Path.Combine(_appSettings.UploadServerDir, uniqueFileName);
                 using (var stream = new FileStream(filePath, FileMode.Create))
                 {
                     await doc.CopyToAsync(stream);
                 }
                 model.FileName = uniqueFileName;
-                model.Url = _serverUrl + uniqueFileName;
+                model.Url = _appSettings.UploadServerUrl + uniqueFileName;
             }
         
             var certificate = _certificateService.Update(id, model);
@@ -120,6 +125,14 @@ namespace CertPortal.Controllers
         public ActionResult<IEnumerable<CertificateResponse>> GetUserCertificates(int userId)
         {
             var certificates = _certificateService.GetUserCertificates(userId);
+            return Ok(certificates);
+        }
+        
+        [Authorize]
+        [HttpGet("institutions/{institutionId:int}")]
+        public ActionResult<IEnumerable<CertificateResponse>> GetInstitutionCertificates(int institutionId)
+        {
+            var certificates = _certificateService.GetInstitutionCertificates(institutionId);
             return Ok(certificates);
         }
         

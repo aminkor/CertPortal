@@ -13,5 +13,8 @@ namespace CertPortal.Helpers
         public int SmtpPort { get; set; }
         public string SmtpUser { get; set; }
         public string SmtpPass { get; set; }
+        public string UploadServerUrl { get; set; }
+        public string UploadServerDir { get; set; }
+
     }
 }

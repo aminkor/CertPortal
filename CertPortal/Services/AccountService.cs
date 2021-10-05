@@ -36,7 +36,7 @@ namespace CertPortal.Services
         void Delete(int id);
 
         void TestDB();
-        IEnumerable<StudentResponse> GetStudents(int institutionId);
+        IEnumerable<StudentResponse> GetStudents(int institutionId, int forCert);
         IEnumerable<UserRoleResponse> GetUserRoles(int userId);
         void UpdateRoleInstitutions(RoleInstitutionUpdateRequest request);
 
@@ -285,18 +285,15 @@ namespace CertPortal.Services
             Console.WriteLine("heelloo");
         }
 
-        public IEnumerable<StudentResponse> GetStudents(int institutionId)
+        public IEnumerable<StudentResponse> GetStudents(int institutionId, int forCert)
         {
-            var students = _context.Accounts
-                    .Where(student => student.UserRole == UserRole.User 
-                                      && (
-                                          student.InstitutionStudent.FirstOrDefault() != null && student.InstitutionStudent.First().Institution.Id == institutionId
-                                          || student.InstitutionStudent.Count == 0
-                                          )
-                                      
-                                      )
-                    .Include(student => student.InstitutionStudent)
-                    .ThenInclude(sis => sis.Institution)
+            var students = _context.Accounts.Where(account =>
+                    account.UserRole == UserRole.User &&
+                    (account.InstitutionId == null || account.InstitutionId == institutionId)
+                )
+                .Include(student => student.InstitutionStudent)
+                .ThenInclude(sis => sis.Institution)
+                .Include(student => student.Certificates);
                     ;
 
             IEnumerable<StudentResponse> studentResponses = new List<StudentResponse>();
@@ -308,7 +305,13 @@ namespace CertPortal.Services
                 studentResponse.LastName = student.LastName;
                 studentResponse.Created = student.Created;
                 studentResponse.Updated = student.Updated;
-                studentResponse.Status = student.InstitutionStudent.FirstOrDefault() != null ? student.InstitutionStudent.FirstOrDefault().Institution.Id == institutionId ? "Added" : "Available" : "Available";
+                studentResponse.Email = student.Email;
+                studentResponse.Status = student.InstitutionId != null
+                    ? student.InstitutionId == institutionId ? "Added" : "Available"
+                    : "Available";
+                studentResponse.CertificateStatus = student.Certificates != null
+                    ? student.Certificates.Any( certificate => certificate.InstitutionId == institutionId && certificate.Id == forCert ) ? "Assigned" : "Available"
+                    : "Available";
                 studentResponses = studentResponses.Append(studentResponse);
              
             }

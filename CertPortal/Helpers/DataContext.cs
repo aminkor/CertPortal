@@ -44,6 +44,31 @@ namespace CertPortal.Helpers
                     .HasForeignKey(d => d.InstitutionId)
                     .HasConstraintName("institutionstudents_institutions_Id_fk");
             });
+
+            modelBuilder.Entity<Account>()
+                .HasMany(c => c.Certificates)
+                .WithOne(e => e.Account).OnDelete(DeleteBehavior.SetNull);
+            ;
+            
+            modelBuilder.Entity<Certificate>()
+                .HasOne(e => e.Account)
+                .WithMany(c => c.Certificates);
+            
+            
+            modelBuilder.Entity<Certificate>()
+                .HasOne(e => e.Institution)
+                .WithMany(c => c.Certificates);
+            
+            modelBuilder.Entity<Institution>()
+                .HasMany(c => c.Certificates)
+                .WithOne(e => e.Institution).OnDelete(DeleteBehavior.SetNull);
+            ;
+            
+            modelBuilder.Entity<Institution>()
+                .HasMany(c => c.Students)
+                .WithOne(e => e.Institution).OnDelete(DeleteBehavior.SetNull);
+;
+            
             OnModelCreatingPartial(modelBuilder);
         }
         

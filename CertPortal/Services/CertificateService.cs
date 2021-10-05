@@ -8,6 +8,7 @@ using CertPortal.Helpers;
 using CertPortal.Models.Certificates;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
 
 namespace CertPortal.Services
 {
@@ -21,25 +22,40 @@ namespace CertPortal.Services
         IEnumerable<CertificateResponse> GetUserCertificates(int userId);
 
 
+        IEnumerable<CertificateResponse> GetInstitutionCertificates(int institutionId);
     }
     public class CertificateService: ICertificateService
     {
         private readonly DataContext _context;
         private readonly IMapper _mapper;
         private readonly IHostEnvironment _env;
-        private static readonly string _serverUrl = "http://localhost/certportal_uploads/";
+        private static readonly string _serverUrl = "http://cportal.ddns.net:4444/certportal_uploads/";
         private static readonly string _serverDir = "D:\\wamp64\\www\\certportal_uploads";
-        public CertificateService(DataContext context, IMapper mapper, IHostEnvironment env)
+        private readonly AppSettings _appSettings;
+
+        public CertificateService(DataContext context, IMapper mapper, IHostEnvironment env, IOptions<AppSettings> appSettings)
         {
             _context = context;
             _mapper = mapper;
             _env = env;
+            _appSettings = appSettings.Value;
         }
 
         public IEnumerable<CertificateResponse> GetAll()
         {
-            var certificates = _context.Certificates;
-            return _mapper.Map<IList<CertificateResponse>>(certificates);
+            var certificates = _context.Certificates
+                .Include(certificate => certificate.Account )
+                .Include(certificate => certificate.Institution );
+            IEnumerable<CertificateResponse> certificateResponses = new List<CertificateResponse>();
+            foreach (var certificate in certificates)
+            {
+                CertificateResponse certificateResponse = _mapper.Map<CertificateResponse>(certificate);
+                certificateResponse.IssuedBy = certificate.Institution != null ? certificate.Institution.Name : "";
+                certificateResponse.AssignedTo = certificate.Account != null ? certificate.Account.FullName() : "";
+                certificateResponses = certificateResponses.Append(certificateResponse);
+            }
+
+            return _mapper.Map<IList<CertificateResponse>>(certificateResponses);
         }
 
         public CertificateResponse GetById(int id)
@@ -70,7 +86,7 @@ namespace CertPortal.Services
             // delete old file first
             if (model.Url != null)
             {
-                var oldFileDir = Path.Combine(_serverDir, certificate.FileName);
+                var oldFileDir = Path.Combine(_appSettings.UploadServerDir, certificate.FileName);
                 if (File.Exists(oldFileDir))
                 {
                     File.Delete(oldFileDir);
@@ -89,6 +105,14 @@ namespace CertPortal.Services
         public void Delete(int id)
         {
             var certificate = getCertificate(id);
+            
+            // delete file first
+            var oldFileDir = Path.Combine(_appSettings.UploadServerDir, certificate.FileName);
+            if (File.Exists(oldFileDir))
+            {
+                File.Delete(oldFileDir);
+            }
+            
             _context.Certificates.Remove(certificate);
             _context.SaveChanges();
         }
@@ -103,6 +127,28 @@ namespace CertPortal.Services
                 certificates = certificates.Append(accountCertificate.Certificate);
             }
             return _mapper.Map<IList<CertificateResponse>>(certificates);
+        }
+        public IEnumerable<CertificateResponse> GetInstitutionCertificates(int institutionId)
+        {
+            var institution = _context.Institutions
+                .Where(institution1 => institution1.Id == institutionId)
+                .Include(institution1 => institution1.Certificates)
+                .ThenInclude( cert => cert.Account)
+                .FirstOrDefault();
+            
+            IEnumerable<CertificateResponse> certificateResponses = new List<CertificateResponse>();
+            if (institution != null)
+            {
+                foreach (var certificate in institution.Certificates)
+                {
+                    CertificateResponse certificateResponse = _mapper.Map<CertificateResponse>(certificate);
+                    certificateResponse.IssuedBy = institution.Name;
+                    certificateResponse.AssignedTo = certificate.Account != null ? certificate.Account.FullName() : "";
+                    certificateResponses = certificateResponses.Append(certificateResponse);
+                }
+            }
+         
+            return _mapper.Map<IList<CertificateResponse>>(certificateResponses);
         }
 
         private Certificate getCertificate(int id)

@@ -36,10 +36,12 @@ namespace CertPortal.Services
         {
             IEnumerable<InstitutionResponse> institutionResponses = new List<InstitutionResponse>();
             var institutions = _context.Institutions
-                .Include(institution => institution.InstitutionStudent );
+                .Include(institution => institution.Students )
+                .Include(institution => institution.Certificates );
             foreach (var institution in institutions)
             {
-                int studentsCount = institution.InstitutionStudent != null ? institution.InstitutionStudent.Count : 0;
+                int studentsCount = institution.Students.Count;
+                int certificatesCount = institution.Certificates.Count;
                 InstitutionResponse institutionResponse = new InstitutionResponse()
                 {
                     Id = institution.Id,
@@ -48,7 +50,8 @@ namespace CertPortal.Services
                     Created = institution.Created,
                     Updated = institution.Updated,
                     Description = institution.Description,
-                    StudentsCounts = studentsCount.ToString()
+                    StudentsCounts = studentsCount.ToString(),
+                    CertificatesCounts = certificatesCount.ToString()
                 };
                 institutionResponses = institutionResponses.Append(institutionResponse);
             }
@@ -108,18 +111,17 @@ namespace CertPortal.Services
 
         public IEnumerable<StudentResponse> GetStudents(int institutionId)
         {
-            var students = _context.InstitutionStudents
-                .Where(student => student.InstitutionId == institutionId )
-                .Include( student => student.Account);
+            var institution = getInstitution(institutionId,true);
+            var students = institution.Students ?? new List<Account>();
             
             IEnumerable<StudentResponse> studentResponses = new List<StudentResponse>();
             foreach (var student in students)
             {
                 
                 StudentResponse studentResponse = new StudentResponse();
-                studentResponse.Id = student.Account.Id;
-                studentResponse.FirstName = student.Account.FirstName;
-                studentResponse.LastName = student.Account.LastName;
+                studentResponse.Id = student.Id;
+                studentResponse.FirstName = student.FirstName;
+                studentResponse.LastName = student.LastName;
                 studentResponse.Created = student.Created;
                 studentResponse.Updated = student.Updated;
 
@@ -139,12 +141,9 @@ namespace CertPortal.Services
 
             if (student != null && institution != null)
             {
-                InstitutionStudent institutionStudent = new InstitutionStudent();
-                institutionStudent.AccountId = student.Id;
-                institutionStudent.InstitutionId = institution.Id;
-                institutionStudent.Created = DateTime.Now;
+                student.InstitutionId = institution.Id;
 
-                _context.InstitutionStudents.Add(institutionStudent);
+                _context.Accounts.Update(student);
                 _context.SaveChanges();
             }
             else
@@ -156,13 +155,13 @@ namespace CertPortal.Services
         
         public void RemoveStudent(AddStudentRequest request)
         {
-            InstitutionStudent institutionStudent = _context.InstitutionStudents.FirstOrDefault(student => 
-                student.AccountId == request.StudentId 
-                && student.InstitutionId == request.InstitutionId);
+            Account student = _context.Accounts.Find(request.StudentId);
 
-            if (institutionStudent != null)
+
+            if (student != null)
             {
-                _context.InstitutionStudents.Remove(institutionStudent);
+                student.InstitutionId = null;
+                _context.Accounts.Update(student);
                 _context.SaveChanges();
 
             }
@@ -201,9 +200,21 @@ namespace CertPortal.Services
         }
 
 
-        private Institution getInstitution(int id)
+        private Institution getInstitution(int id, bool withStudent = false)
         {
-            var institution = _context.Institutions.Find(id);
+            Institution institution = null;
+            if (withStudent)
+            {
+                institution = _context.Institutions
+                    .Where(institution => institution.Id == id)
+                    .Include( institution => institution.Students).FirstOrDefault();
+
+            }
+            else
+            {
+                institution = _context.Institutions.Find(id);
+
+            }
             if (institution == null) throw new KeyNotFoundException("Institution not found");
             return institution;
         }
