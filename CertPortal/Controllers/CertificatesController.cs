@@ -18,7 +18,7 @@ using UpdateRequest = CertPortal.Models.Certificates.UpdateRequest;
 
 namespace CertPortal.Controllers
 {
-      [ApiController]
+    [ApiController]
     [Route("[controller]")]
     public class CertificatesController : BaseController
     {
@@ -28,12 +28,14 @@ namespace CertPortal.Controllers
         private static readonly string _serverUrl = "http://cportal.ddns.net:4444/certportal_uploads/";
         private static readonly string _serverDir = "D:\\wamp64\\www\\certportal_uploads";
         private readonly AppSettings _appSettings;
+        private readonly DataContext _context;
 
-        public CertificatesController(ICertificateService certificateService, IMapper mapper, IHostEnvironment env, IOptions<AppSettings> appSettings)
+        public CertificatesController(ICertificateService certificateService, IMapper mapper, IHostEnvironment env, IOptions<AppSettings> appSettings, DataContext context)
         {
             _certificateService = certificateService;
             _mapper = mapper;
             _env = env;
+            _context = context;
             _appSettings = appSettings.Value;
         }
         
@@ -58,10 +60,30 @@ namespace CertPortal.Controllers
             return Ok(certificate);
         }
         
-        [Authorize(UserRole.Admin)]
+        [Authorize]
         [HttpPost]
         public async Task<ActionResult<CertificateResponse>> Create([FromForm] CreateRequest model)
         {
+            // return unauthorized if the role is non admin, and trying to create a certificate not associated to its institutions
+            List<UserRole> authorizedRoles = new List<UserRole> { UserRole.Admin , UserRole.Instructor};
+            if (authorizedRoles.Contains(Account.UserRole) == false)
+            {
+                return Unauthorized(new { message = "Unauthorized" });
+            }
+            else if (Account.UserRole == UserRole.Instructor)
+            {
+                // currently must create cert directly to institution
+                if (model.InstitutionId == null || model.InstitutionId == 0)
+                    return Unauthorized(new { message = "Unauthorized" });
+
+                // limits certificate creation to its institution only
+                if (_context.RoleInstitutions.Any(role =>
+                    role.AccountId == Account.Id && role.InstitutionId == model.InstitutionId) == false)
+                    return Unauthorized(new { message = "Unauthorized" });
+
+            }
+         
+            
             if (Request.Form.Files.Count > 0)
             {
                 var doc = Request.Form.Files.First();
@@ -85,11 +107,22 @@ namespace CertPortal.Controllers
         [HttpPut("{id:int}")]
         public async Task<ActionResult<CertificateResponse>> Update(int id,[FromForm]  UpdateRequest model)
         {
-            // users can update their own account and admins can update any account
-            // TODO return unauthorized if not admin and updating non linked certificate
-            // if (id != Account.Id && Account.UserRole != UserRole.Admin)
-            //     return Unauthorized(new { message = "Unauthorized" });
+            // return unauthorized if the role is non admin, and trying to create a certificate not associated to its institutions
+            List<UserRole> authorizedRoles = new List<UserRole> { UserRole.Admin , UserRole.Instructor};
+            if (authorizedRoles.Contains(Account.UserRole) == false)
+            {
+                return Unauthorized(new { message = "Unauthorized" });
+            }
+            else if (Account.UserRole == UserRole.Instructor)
+            {
+                // disallow institution unassigment if role is instructor. exclude student assignment/unassignment
+                var cert = _certificateService.GetById(id);
+                List<string> authorizedActions = new List<string> { "instructor-assign-student", "instructor-unassign-student"  };
+                if (authorizedActions.Contains(model.ActionType) == false)
+                    return Unauthorized(new { message = "Unauthorized" });
 
+            }
+            
             if (Request.Form.Files.Count > 0)
             {
                 var doc = Request.Form.Files.First();
@@ -133,6 +166,14 @@ namespace CertPortal.Controllers
         public ActionResult<IEnumerable<CertificateResponse>> GetInstitutionCertificates(int institutionId)
         {
             var certificates = _certificateService.GetInstitutionCertificates(institutionId);
+            return Ok(certificates);
+        }
+        
+        [Authorize]
+        [HttpGet("instructors/{instructorId:int}")]
+        public ActionResult<IEnumerable<CertificateResponse>> GetInstructorCertificates(int instructorId)
+        {
+            var certificates = _certificateService.GetInstructorCertificates(instructorId);
             return Ok(certificates);
         }
         

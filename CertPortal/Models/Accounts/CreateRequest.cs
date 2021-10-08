@@ -29,5 +29,8 @@ namespace CertPortal.Models.Accounts
         [Required]
         [Compare("Password")]
         public string ConfirmPassword { get; set; }
+        
+        public int InstitutionId { get; set; }
+
     }
 }

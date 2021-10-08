@@ -41,6 +41,9 @@ namespace CertPortal.Models.Accounts
             get => _confirmPassword;
             set => _confirmPassword = replaceEmptyWithNull(value);
         }
+        
+        public int InstitutionId { get; set; }
+
 
         // helpers
 

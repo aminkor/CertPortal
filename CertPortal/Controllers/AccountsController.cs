@@ -3,7 +3,9 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using CertPortal.Entities;
+using CertPortal.Helpers;
 using CertPortal.Models.Accounts;
 using CertPortal.Services;
 
@@ -15,13 +17,16 @@ namespace CertPortal.Controllers
     {
         private readonly IAccountService _accountService;
         private readonly IMapper _mapper;
+        private readonly DataContext _context;
+
 
         public AccountsController(
             IAccountService accountService,
-            IMapper mapper)
+            IMapper mapper, DataContext context)
         {
             _accountService = accountService;
             _mapper = mapper;
+            _context = context;
         }
 
         [HttpPost("authenticate")]
@@ -114,10 +119,26 @@ namespace CertPortal.Controllers
             return Ok(account);
         }
 
-        [Authorize(UserRole.Admin)]
+        [Authorize]
         [HttpPost]
         public ActionResult<AccountResponse> Create(CreateRequest model)
         {
+            List<UserRole> authorizedRoles = new List<UserRole> { UserRole.Admin , UserRole.Instructor};
+            if (authorizedRoles.Contains(Account.UserRole) == false)
+            {
+                return Unauthorized(new { message = "Unauthorized" });
+            }
+
+            if (Account.UserRole.ToString() == "Instructor")
+            {
+                // limits user creation to its institution only
+                if (_context.RoleInstitutions.Any(role =>
+                    role.AccountId == Account.Id && role.InstitutionId == model.InstitutionId) == false)
+                    return Unauthorized(new { message = "Unauthorized" });
+            }
+
+            
+            
             var account = _accountService.Create(model);
             return Ok(account);
         }
@@ -127,9 +148,22 @@ namespace CertPortal.Controllers
         public ActionResult<AccountResponse> Update(int id, UpdateRequest model)
         {
             // users can update their own account and admins can update any account
-            if (id != Account.Id && Account.UserRole != UserRole.Admin)
+            List<UserRole> authorizedRoles = new List<UserRole> { UserRole.Admin , UserRole.Instructor};
+            if (id != Account.Id  && authorizedRoles.Contains(Account.UserRole) == false)
+            {
                 return Unauthorized(new { message = "Unauthorized" });
-
+            }
+            // else if (id != Account.Id && Account.UserRole != UserRole.Admin)
+            // {
+            //     return Unauthorized(new { message = "Unauthorized" });
+            //
+            // }
+            // limits user creation to its institution only
+            // if (_context.RoleInstitutions.Any(role =>
+            //     role.AccountId == Account.Id && role.InstitutionId == model.InstitutionId) == false)
+            //     return Unauthorized(new { message = "Unauthorized" });
+            
+           
             // only admins can update role
             if (Account.UserRole != UserRole.Admin)
                 model.UserRole = null;
@@ -190,6 +224,20 @@ namespace CertPortal.Controllers
 
             _accountService.UpdateRoleInstitutions(request);
             return Ok(new { message = "Institution Updated Succesfully" });
+        }
+        
+        [Authorize]
+        [HttpGet("instructors/{instructorId:int}")]
+        public IActionResult GetInstructorStudents(int instructorId)
+        {
+            // users can delete their own account and admins can delete any account
+            // TODO return unauthorized if non admin trying to get students list, or the user no institution role on that
+            // resource
+            // if (id != Account.Id && Account.UserRole != UserRole.Admin)
+            //     return Unauthorized(new { message = "Unauthorized" });
+
+            var students = _accountService.GetInstructorStudents(instructorId);
+            return Ok(students);
         }
 
         // helper methods

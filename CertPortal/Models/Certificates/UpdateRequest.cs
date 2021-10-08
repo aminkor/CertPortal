@@ -8,6 +8,7 @@
         public string FileName { get; set; }
         public int? InstitutionId { get; set; }
         public int? AccountId { get; set; }
+        public string ActionType { get; set; }
 
     }
 }

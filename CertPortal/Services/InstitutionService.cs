@@ -177,13 +177,18 @@ namespace CertPortal.Services
             IEnumerable<InstitutionResponse> institutionResponses = new List<InstitutionResponse>();
             var account = _context.Accounts.Find(userId);
             
-            var accountInstitutions = _context.RoleInstitutions.Where(institution => institution.AccountId == userId )
+            var accountInstitutions = _context.RoleInstitutions
+                .Where(institution => institution.AccountId == userId )
                 .Include(institution => institution.Institution )
-                .ThenInclude( inst => inst.InstitutionStudent);
-            
+                .ThenInclude( inst => inst.Students)
+                .Include(institution => institution.Institution )
+                .ThenInclude( inst => inst.Certificates);
+
             foreach (var accountInstitution in accountInstitutions)
             {
-                int studentsCount = accountInstitution.Institution.InstitutionStudent != null ? accountInstitution.Institution.InstitutionStudent.Count : 0;
+                int studentsCount = accountInstitution.Institution.Students.Count;
+                int certificatesCount = accountInstitution.Institution.Certificates.Count;
+                
                 InstitutionResponse institutionResponse = new InstitutionResponse()
                 {
                     Id = accountInstitution.Institution.Id,
@@ -192,7 +197,9 @@ namespace CertPortal.Services
                     Created = accountInstitution.Institution.Created,
                     Updated = accountInstitution.Institution.Updated,
                     Description = accountInstitution.Institution.Description,
-                    StudentsCounts = studentsCount.ToString()
+                    StudentsCounts = studentsCount.ToString(),
+                    CertificatesCounts = certificatesCount.ToString()
+
                 };
                 institutionResponses = institutionResponses.Append(institutionResponse);
             }

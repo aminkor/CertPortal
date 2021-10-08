@@ -23,6 +23,8 @@ namespace CertPortal.Services
 
 
         IEnumerable<CertificateResponse> GetInstitutionCertificates(int institutionId);
+        IEnumerable<CertificateResponse> GetInstructorCertificates(int instructorId);
+
     }
     public class CertificateService: ICertificateService
     {
@@ -119,14 +121,21 @@ namespace CertPortal.Services
 
         public IEnumerable<CertificateResponse> GetUserCertificates(int userId)
         {
-            var account = _context.Accounts.Find(userId);
-            var accountCertificates = _context.AccountCertificates.Include(certificate => certificate.Certificate );
+            var account = _context.Accounts
+                .Where(account1 => account1.Id == userId )
+                .Include(account =>  account.Certificates).FirstOrDefault();
             IEnumerable<Certificate> certificates = new List<Certificate>();
-            foreach (var accountCertificate in accountCertificates)
+
+            if (account != null)
             {
-                certificates = certificates.Append(accountCertificate.Certificate);
+                var accountCertificates = account.Certificates;
+                foreach (var accountCertificate in accountCertificates)
+                {
+                    certificates = certificates.Append(accountCertificate);
+                }
             }
             return _mapper.Map<IList<CertificateResponse>>(certificates);
+
         }
         public IEnumerable<CertificateResponse> GetInstitutionCertificates(int institutionId)
         {
@@ -148,6 +157,35 @@ namespace CertPortal.Services
                 }
             }
          
+            return _mapper.Map<IList<CertificateResponse>>(certificateResponses);
+        }
+        public IEnumerable<CertificateResponse> GetInstructorCertificates(int instructorId)
+        {
+            IEnumerable<CertificateResponse> certificateResponses = new List<CertificateResponse>();
+
+            var instructor = _context.Accounts.Where(instructor => instructor.Id == instructorId).FirstOrDefault();
+            if (instructor != null)
+            {
+                var roleInstitutions =
+                    _context.RoleInstitutions
+                        .Where(roleInstitution => roleInstitution.AccountId == instructorId)
+                        .Include(roleInstitution => roleInstitution.Institution)
+                        .ThenInclude( institution1 => institution1.Certificates )
+                        .ThenInclude(certificate => certificate.Account );
+
+                foreach (var roleInstitution in roleInstitutions)
+                {
+                    foreach (var certificate in roleInstitution.Institution.Certificates)
+                    {
+                        CertificateResponse certificateResponse = _mapper.Map<CertificateResponse>(certificate);
+                        certificateResponse.IssuedBy = roleInstitution.Institution.Name;
+                        certificateResponse.AssignedTo = certificate.Account != null ? certificate.Account.FullName() : "";
+                        certificateResponses = certificateResponses.Append(certificateResponse);
+                    }
+             
+                }
+            }
+      
             return _mapper.Map<IList<CertificateResponse>>(certificateResponses);
         }
 

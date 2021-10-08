@@ -14,6 +14,7 @@ using CertPortal.Helpers;
 using CertPortal.Models.Accounts;
 using CertPortal.Models.Institutions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Query;
 using CreateRequest = CertPortal.Models.Accounts.CreateRequest;
 using UpdateRequest = CertPortal.Models.Accounts.UpdateRequest;
 
@@ -40,6 +41,7 @@ namespace CertPortal.Services
         IEnumerable<UserRoleResponse> GetUserRoles(int userId);
         void UpdateRoleInstitutions(RoleInstitutionUpdateRequest request);
 
+        IEnumerable<StudentResponse> GetInstructorStudents(int instructorId);
     }
 
     public class AccountService : IAccountService
@@ -287,15 +289,30 @@ namespace CertPortal.Services
 
         public IEnumerable<StudentResponse> GetStudents(int institutionId, int forCert)
         {
-            var students = _context.Accounts.Where(account =>
-                    account.UserRole == UserRole.User &&
-                    (account.InstitutionId == null || account.InstitutionId == institutionId)
-                )
-                .Include(student => student.InstitutionStudent)
-                .ThenInclude(sis => sis.Institution)
-                .Include(student => student.Certificates);
-                    ;
-
+            IIncludableQueryable<Account, ICollection<Certificate>> students;
+            if (forCert == 0)
+            {
+                // standard institution assignment
+                students = _context.Accounts.Where(account =>
+                        account.UserRole == UserRole.User &&
+                        (account.InstitutionId == null || account.InstitutionId == 0 || account.InstitutionId == institutionId)
+                    )
+                    .Include(student => student.InstitutionStudent)
+                    .ThenInclude(sis => sis.Institution)
+                    .Include(student => student.Certificates);
+            }
+            else
+            {
+                // certificate assignment, must be associated with the institution
+                students = _context.Accounts.Where(account =>
+                        account.UserRole == UserRole.User &&
+                        (account.InstitutionId == institutionId)
+                    )
+                    .Include(student => student.InstitutionStudent)
+                    .ThenInclude(sis => sis.Institution)
+                    .Include(student => student.Certificates);
+            }
+                    
             IEnumerable<StudentResponse> studentResponses = new List<StudentResponse>();
             foreach (var student in students)
             {
@@ -367,6 +384,48 @@ namespace CertPortal.Services
 
             _context.SaveChanges();
             
+        }
+
+        public IEnumerable<StudentResponse> GetInstructorStudents(int instructorId)
+        {
+            IEnumerable<StudentResponse> studentResponses = new List<StudentResponse>();
+             var instructor = _context.Accounts.Where(instructor => instructor.Id == instructorId).FirstOrDefault();
+             if (instructor != null)
+             {
+                 var roleInstitutions =
+                     _context.RoleInstitutions
+                         .Where(roleInstitution => roleInstitution.AccountId == instructorId)
+                         .Include(roleInstitution => roleInstitution.Institution)
+                         .ThenInclude(institution1 => institution1.Students);
+
+                 foreach (var roleInstitution in roleInstitutions)
+                 {
+                     foreach (var student in roleInstitution.Institution.Students)
+                     {
+                         StudentResponse studentResponse = new StudentResponse();
+                         studentResponse.Id = student.Id;
+                         studentResponse.FirstName = student.FirstName;
+                         studentResponse.LastName = student.LastName;
+                         studentResponse.Created = student.Created;
+                         studentResponse.Updated = student.Updated;
+                         studentResponse.Email = student.Email;
+                         studentResponse.UserRole = student.UserRole.ToString();
+                         studentResponse.IsVerified = student.IsVerified;
+                         studentResponse.RegisteredTo = roleInstitution.Institution.Name;
+                         studentResponse.InstitutionId = roleInstitution.Institution.Id;
+                         // studentResponse.Status = student.InstitutionId != null
+                         //     ? student.InstitutionId == institutionId ? "Added" : "Available"
+                         //     : "Available";
+                         // studentResponse.CertificateStatus = student.Certificates != null
+                         //     ? student.Certificates.Any( certificate => certificate.InstitutionId == institutionId && certificate.Id == forCert ) ? "Assigned" : "Available"
+                         //     : "Available";
+                         studentResponses = studentResponses.Append(studentResponse);
+                     }
+                     
+                 }
+             }
+
+             return studentResponses;
         }
 
         // helper methods
