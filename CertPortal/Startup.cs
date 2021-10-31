@@ -47,6 +47,7 @@ namespace CertPortal
             services.AddScoped<IEmailService, EmailService>();
             services.AddScoped<IInstitutionService, InstitutionService>();
             services.AddScoped<ICertificateService, CertificateService>();
+            Syncfusion.Licensing.SyncfusionLicenseProvider.RegisterLicense("NTI3NzczQDMxMzkyZTMzMmUzMGxQamxQNDZFdkhoNXZNeTYrYzR4RUZzaXFpcFcrYjc3LzlXdVpPNDNzdVk9");
 
             var serviceProvider = services.BuildServiceProvider();
             var service = serviceProvider.GetService<IAccountService>();

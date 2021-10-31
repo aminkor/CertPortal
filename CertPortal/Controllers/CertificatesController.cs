@@ -176,6 +176,16 @@ namespace CertPortal.Controllers
             var certificates = _certificateService.GetInstructorCertificates(instructorId);
             return Ok(certificates);
         }
+
+        [Authorize]
+        [HttpPost("GenerateCert")]
+        public ActionResult GenerateCertificates(GenerateRequest model)
+     
+        {
+            model.ParseDates();
+            _certificateService.GenerateCertificates(model);
+            return Ok();
+        }
         
         private string GetUniqueFileName(string fileName)
         {
