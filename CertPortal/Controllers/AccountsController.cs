@@ -101,9 +101,9 @@ namespace CertPortal.Controllers
 
         [Authorize(UserRole.Admin)]
         [HttpGet]
-        public ActionResult<IEnumerable<AccountResponse>> GetAll()
+        public ActionResult<IEnumerable<AccountResponse>> GetAll([FromQuery] string filter = null)
         {
-            var accounts = _accountService.GetAll();
+            var accounts = _accountService.GetAll(filter);
             return Ok(accounts);
         }
 

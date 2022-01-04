@@ -30,7 +30,7 @@ namespace CertPortal.Services
         void ForgotPassword(ForgotPasswordRequest model, string origin);
         void ValidateResetToken(ValidateResetTokenRequest model);
         void ResetPassword(ResetPasswordRequest model);
-        IEnumerable<AccountResponse> GetAll();
+        IEnumerable<AccountResponse> GetAll(string filter);
         AccountResponse GetById(int id);
         AccountResponse Create(CreateRequest model);
         AccountResponse Update(int id, UpdateRequest model);
@@ -213,9 +213,16 @@ namespace CertPortal.Services
             _context.SaveChanges();
         }
 
-        public IEnumerable<AccountResponse> GetAll()
+        public IEnumerable<AccountResponse> GetAll(string filter)
         {
-            var accounts = _context.Accounts;
+            IQueryable<Account> accounts = _context.Accounts;
+            if (filter != null)
+            {
+                if (filter == "student")
+                {
+                    accounts = accounts.Where(acc => acc.UserRole == UserRole.User);
+                }
+            }
             return _mapper.Map<IList<AccountResponse>>(accounts);
         }
 
