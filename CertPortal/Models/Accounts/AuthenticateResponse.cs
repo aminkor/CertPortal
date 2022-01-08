@@ -15,6 +15,8 @@ namespace CertPortal.Models.Accounts
         public DateTime? Updated { get; set; }
         public bool IsVerified { get; set; }
         public string JwtToken { get; set; }
+        public string Address { get; set; }
+        public string ContactNo { get; set; }
 
         [JsonIgnore] // refresh token is returned in http only cookie
         public string RefreshToken { get; set; }

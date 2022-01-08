@@ -23,6 +23,8 @@ namespace CertPortal.Entities
         public DateTime? Updated { get; set; }
         public List<RefreshToken> RefreshTokens { get; set; }
         public int? InstitutionId { get; set; }
+        public string Address { get; set; }
+        public string ContactNo { get; set; }
 
         public virtual Institution Institution { get; set; }
 
