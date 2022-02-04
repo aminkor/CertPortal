@@ -2,6 +2,7 @@ namespace CertPortal.Helpers
 {
     public class AppSettings
     {
+        public string AZURE_STORAGE_CONNECTION_STRING { get; set; }
         public string Secret { get; set; }
 
         // refresh token time to live (in days), inactive tokens are

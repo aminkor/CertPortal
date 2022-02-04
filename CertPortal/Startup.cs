@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using AutoMapper;
+using Azure.Identity;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -18,6 +19,7 @@ using Microsoft.IdentityModel.Tokens;
 using CertPortal.Helpers;
 using CertPortal.Middleware;
 using CertPortal.Services;
+using Microsoft.Extensions.Azure;
 
 namespace CertPortal
 {
@@ -48,7 +50,7 @@ namespace CertPortal
             services.AddScoped<IInstitutionService, InstitutionService>();
             services.AddScoped<ICertificateService, CertificateService>();
             Syncfusion.Licensing.SyncfusionLicenseProvider.RegisterLicense("NTI3NzczQDMxMzkyZTMzMmUzMGxQamxQNDZFdkhoNXZNeTYrYzR4RUZzaXFpcFcrYjc3LzlXdVpPNDNzdVk9");
-
+         
             var serviceProvider = services.BuildServiceProvider();
             var service = serviceProvider.GetService<IAccountService>();
             // service.TestDB();

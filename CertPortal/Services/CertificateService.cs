@@ -2,10 +2,16 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net;
+using System.Threading.Tasks;
 using AutoMapper;
+using Azure;
+using Azure.Storage.Blobs;
+using Azure.Storage.Blobs.Models;
 using CertPortal.Entities;
 using CertPortal.Helpers;
 using CertPortal.Models.Certificates;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
@@ -13,6 +19,7 @@ using Syncfusion.Drawing;
 using Syncfusion.Pdf;
 using Syncfusion.Pdf.Graphics;
 using Syncfusion.Pdf.Grid;
+using Microsoft.Extensions.Configuration;
 
 namespace CertPortal.Services
 {
@@ -30,6 +37,7 @@ namespace CertPortal.Services
         IEnumerable<CertificateResponse> GetInstructorCertificates(int instructorId);
 
         void GenerateCertificates(GenerateRequest request);
+        string UploadFile(IFormFile doc, string uniqueFileName);
     }
     public class CertificateService: ICertificateService
     {
@@ -39,13 +47,18 @@ namespace CertPortal.Services
         private static readonly string _serverUrl = "http://cportal.ddns.net:4444/certportal_uploads/";
         private static readonly string _serverDir = "D:\\wamp64\\www\\certportal_uploads";
         private readonly AppSettings _appSettings;
+        private BlobServiceClient blobServiceClient;
+        private readonly IConfiguration Configuration;
 
-        public CertificateService(DataContext context, IMapper mapper, IHostEnvironment env, IOptions<AppSettings> appSettings)
+        public CertificateService(DataContext context, IMapper mapper, IHostEnvironment env, IOptions<AppSettings> appSettings, IConfiguration configuration)
         {
             _context = context;
             _mapper = mapper;
             _env = env;
+            Configuration = configuration;
             _appSettings = appSettings.Value;
+            blobServiceClient = new BlobServiceClient(Configuration.GetConnectionString("AZURE_STORAGE_CONNECTION_STRING"));
+            
         }
 
         public IEnumerable<CertificateResponse> GetAll()
@@ -114,14 +127,56 @@ namespace CertPortal.Services
             var certificate = getCertificate(id);
             
             // delete file first
-            var oldFileDir = Path.Combine(_appSettings.UploadServerDir, certificate.FileName);
-            if (File.Exists(oldFileDir))
-            {
-                File.Delete(oldFileDir);
-            }
+            BlobContainerClient blobClient = blobServiceClient.GetBlobContainerClient("uploads");
+
+            BlobItem blob = GetBlobReferenceForCertificate(certificate, blobClient).Result;
+            blobClient.DeleteBlob(blob.Name);
+            // var oldFileDir = Path.Combine(_appSettings.UploadServerDir, certificate.FileName);
+            // if (File.Exists(oldFileDir))
+            // {
+            //     File.Delete(oldFileDir);
+            // }
             
             _context.Certificates.Remove(certificate);
             _context.SaveChanges();
+        }
+
+        private async Task<BlobItem> GetBlobReferenceForCertificate(Certificate certificate, BlobContainerClient blobClient)
+        {
+            BlobItem item = null;
+            try
+            {
+                // Call the listing operation and return pages of the specified size.
+                var resultSegment = blobClient.GetBlobsAsync(prefix:certificate.FileName)
+                    .AsPages(default, 100);
+                
+                
+                // Enumerate the blobs returned for each page.
+                await foreach (Azure.Page<BlobItem> blobPage in resultSegment)
+                {
+                    int iterator = 0;
+                    foreach (BlobItem blobItem in blobPage.Values)
+                    {
+                        if (iterator == 0)
+                        {
+                            item = blobItem;
+
+                        }
+                        Console.WriteLine("Blob name: {0}", blobItem.Name);
+                        iterator += 1;
+                    }
+
+                    Console.WriteLine();
+                }
+            }
+            catch (RequestFailedException e)
+            {
+                Console.WriteLine(e.Message);
+                Console.ReadLine();
+                throw;
+            }
+
+            return item;
         }
 
         public IEnumerable<CertificateResponse> GetUserCertificates(int userId)
@@ -222,7 +277,24 @@ namespace CertPortal.Services
             
             CreatePdfCertificateTemplate1(studentsToBeAssigned, request);
         }
-        
+
+        public string UploadFile(IFormFile doc, string uniqueFileName)
+        {
+            BlobContainerClient blobClient = blobServiceClient.GetBlobContainerClient("uploads");
+
+            using (var ms = new MemoryStream())
+            {
+                doc.CopyTo(ms); 
+                ms.Position = 0;
+                blobClient.UploadBlobAsync(uniqueFileName,ms).Wait();
+                // var fileBytes = ms.ToArray();
+                // string s = Convert.ToBase64String(fileBytes);
+                // act on the Base64 data
+            }
+
+            return blobClient.Uri.AbsoluteUri;
+        }
+
         private void CreatePdfCertificateTemplate1(List<Account> studentsToBeAssigned, GenerateRequest request)
         {
             foreach (var student in studentsToBeAssigned)
@@ -231,15 +303,17 @@ namespace CertPortal.Services
                 
                 var fileName = student.FullName() + " Template " + request.TemplateId + ".pdf";
                 var uniqueFileName = GetUniqueFileName(fileName);
+                BlobContainerClient blobClient = blobServiceClient.GetBlobContainerClient("uploads");
                 var filePath = Path.Combine(_appSettings.UploadServerDir, uniqueFileName);
+
                 // create cert here
                 switch (request.TemplateId)
                 {
                     case 1:
-                        TemplateOneGen(filePath,student,request);
+                        TemplateOneGen(filePath, student, request, uniqueFileName, blobClient);
                         break;
                     case 2:
-                        TemplateTwoGen(filePath,student,request);
+                        TemplateTwoGen(filePath, student, request, uniqueFileName, blobClient);
                         break;
                     default:
                         break;
@@ -251,7 +325,7 @@ namespace CertPortal.Services
                 model.AccountId = student.Id;
                 model.Description = fileName;
                 model.FileName = uniqueFileName;
-                model.Url = _appSettings.UploadServerUrl + uniqueFileName;
+                model.Url = blobClient.Uri.AbsoluteUri + "/" + uniqueFileName;
 
                 Create(model);
             }
@@ -259,14 +333,19 @@ namespace CertPortal.Services
             
         }
 
-        private void TemplateOneGen(string filePath, Account account, GenerateRequest request)
+        private void TemplateOneGen(string filePath, Account account, GenerateRequest request, string uniqueFileName, BlobContainerClient blobClient)
         {
             PdfDocument doc = new PdfDocument();
             doc.PageSettings.Orientation = PdfPageOrientation.Landscape;
             doc.PageSettings.Margins.All = 0;
             PdfPage page = doc.Pages.Add();
             
-            PdfBitmap image = new PdfBitmap(new FileStream(@"C:\\Users\\LENOVO\\Downloads\\peoplelab-temp-1.png",FileMode.Open));
+            // download image first
+            WebClient myWebClient = new WebClient(); 
+            byte[] bytes = myWebClient.DownloadData("https://certportal.blob.core.windows.net/images/peoplelab-temp-1.png"); 
+            Stream imageStream = new MemoryStream(bytes); 
+
+            PdfBitmap image = new PdfBitmap(imageStream); 
             PdfGraphicsState state = page.Graphics.Save();
             
             page.Graphics.DrawImage(image, new PointF(0,0), new SizeF(page.GetClientSize().Width, page.GetClientSize().Height));
@@ -301,21 +380,37 @@ namespace CertPortal.Services
             page.Graphics.DrawString(expirationDate, font, PdfBrushes.Black, new PointF(640, 450),format);
             
             // pdfGrid.Draw(page, new Syncfusion.Drawing.PointF(10, 10));
-            FileStream fileStream = new FileStream( filePath, FileMode.CreateNew, FileAccess.ReadWrite);
-            doc.Save(fileStream);
-            doc.Close();
-            fileStream.Close();
+            // save file here
+            //Saving the PDF to the MemoryStream
+            MemoryStream stream = new MemoryStream();
+ 
+            doc.Save(stream);   
+            //Set the position as '0'
+            stream.Position = 0;
+
+            blobClient.UploadBlobAsync(uniqueFileName,stream).Wait();
+            // Console.WriteLine(blobClient);
+            stream.Close();
+            // FileStream fileStream = new FileStream( filePath, FileMode.CreateNew, FileAccess.ReadWrite);
+            // doc.Save(fileStream);
+            // doc.Close();
+            // fileStream.Close();
 
         }
 
-        private void TemplateTwoGen(string filePath, Account account, GenerateRequest request)
+        private void TemplateTwoGen(string filePath, Account account, GenerateRequest request, string uniqueFileName, BlobContainerClient blobClient)
         {
             PdfDocument doc = new PdfDocument();
             doc.PageSettings.Orientation = PdfPageOrientation.Landscape;
             doc.PageSettings.Margins.All = 0;
             PdfPage page = doc.Pages.Add();
             
-            PdfBitmap image = new PdfBitmap(new FileStream(@"C:\\Users\\LENOVO\\Downloads\\sample-temp-2.png",FileMode.Open));
+               // download image first
+            WebClient myWebClient = new WebClient(); 
+            byte[] bytes = myWebClient.DownloadData("https://certportal.blob.core.windows.net/images/sample-temp-2.png"); 
+            Stream imageStream = new MemoryStream(bytes); 
+
+            PdfBitmap image = new PdfBitmap(imageStream); 
             PdfGraphicsState state = page.Graphics.Save();
             
             page.Graphics.DrawImage(image, new PointF(0,0), new SizeF(page.GetClientSize().Width, page.GetClientSize().Height));
@@ -352,10 +447,19 @@ namespace CertPortal.Services
             page.Graphics.DrawString(expirationDate, font, PdfBrushes.Black, new PointF(640, 450),format);
             
             // pdfGrid.Draw(page, new Syncfusion.Drawing.PointF(10, 10));
-            FileStream fileStream = new FileStream( filePath, FileMode.CreateNew, FileAccess.ReadWrite);
-            doc.Save(fileStream);
-            doc.Close();
-            fileStream.Close();
+            MemoryStream stream = new MemoryStream();
+ 
+            doc.Save(stream);   
+            //Set the position as '0'
+            stream.Position = 0;
+
+            blobClient.UploadBlobAsync(uniqueFileName,stream).Wait();
+            // Console.WriteLine(blobClient);
+            stream.Close();
+            // FileStream fileStream = new FileStream( filePath, FileMode.CreateNew, FileAccess.ReadWrite);
+            // doc.Save(fileStream);
+            // doc.Close();
+            // fileStream.Close();
 
         }
 

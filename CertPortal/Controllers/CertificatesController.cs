@@ -88,15 +88,16 @@ namespace CertPortal.Controllers
             {
                 var doc = Request.Form.Files.First();
                 var uniqueFileName = GetUniqueFileName(doc.FileName);
-                var filePath = Path.Combine(_appSettings.UploadServerDir, uniqueFileName);
-                using (var stream = new FileStream(filePath, FileMode.Create))
-                {
-                    await doc.CopyToAsync(stream);
-                }
+                string storageUrl = _certificateService.UploadFile(doc, uniqueFileName);
+                // var filePath = Path.Combine(_appSettings.UploadServerDir, uniqueFileName);
+                // using (var stream = new FileStream(filePath, FileMode.Create))
+                // {
+                //     await doc.CopyToAsync(stream);
+                // }
                 // await doc.CopyToAsync(new FileStream(filePath, FileMode.Create));
                 
                 model.FileName = uniqueFileName;
-                model.Url = _appSettings.UploadServerUrl + uniqueFileName;
+                model.Url = storageUrl + "/" + uniqueFileName;
             }
           
             var certificate = _certificateService.Create(model);
